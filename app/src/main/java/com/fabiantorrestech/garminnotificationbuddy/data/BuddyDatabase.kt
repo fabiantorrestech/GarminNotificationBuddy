@@ -10,14 +10,18 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity
 data class GlobalSettingsEntity(
     @PrimaryKey val id: Int = 0,
     val masterEnabled: Boolean = true,
-    val deliveryMode: String = "CONNECT_IQ",
+    val deliveryMode: String = "PROXY_MIRROR",
     val syncWithPhoneDnd: Boolean = false,
+    val mirrorCooldownSeconds: Int = 5,
+    val mirrorBurstStrategy: String = "LATEST_ONLY",
 )
 
 @Entity
@@ -27,6 +31,8 @@ data class AppRuleEntity(
     val isEnabled: Boolean = false,
     val defaultAction: String = "BLOCK",
     val lastSeenAt: Long = 0L,
+    val mirrorCooldownSecondsOverride: Int? = null,
+    val mirrorBurstStrategyOverride: String? = null,
 )
 
 @Entity(primaryKeys = ["packageName", "channelId"])
@@ -147,7 +153,7 @@ interface BuddyDao {
         ScheduleEntity::class,
         DeliveryLogEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class BuddyDatabase : RoomDatabase() {
@@ -163,7 +169,31 @@ abstract class BuddyDatabase : RoomDatabase() {
                     context.applicationContext,
                     BuddyDatabase::class.java,
                     "garmin_notification_buddy.db",
-                ).build().also { instance = it }
+                )
+                    .addMigrations(MIGRATION_1_2)
+                    .build()
+                    .also { instance = it }
+            }
+        }
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE GlobalSettingsEntity " +
+                        "ADD COLUMN mirrorCooldownSeconds INTEGER NOT NULL DEFAULT 5",
+                )
+                database.execSQL(
+                    "ALTER TABLE GlobalSettingsEntity " +
+                        "ADD COLUMN mirrorBurstStrategy TEXT NOT NULL DEFAULT 'LATEST_ONLY'",
+                )
+                database.execSQL(
+                    "ALTER TABLE AppRuleEntity " +
+                        "ADD COLUMN mirrorCooldownSecondsOverride INTEGER",
+                )
+                database.execSQL(
+                    "ALTER TABLE AppRuleEntity " +
+                        "ADD COLUMN mirrorBurstStrategyOverride TEXT",
+                )
             }
         }
     }

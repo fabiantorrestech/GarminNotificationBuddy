@@ -58,7 +58,7 @@
             android:layout_marginTop="16dp" />
 
         <TextView
-            android:id="@+id/connectIqStatusTextView"
+            android:id="@+id/garminConnectSetupNoteTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp" />
@@ -68,17 +68,5 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/refresh_garmin_status" />
-
-        <Button
-            android:id="@+id/openGarminStoreButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/open_watch_store" />
-
-        <TextView
-            android:id="@+id/deliveryModeStatusTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" />
     </LinearLayout>
 </ScrollView>

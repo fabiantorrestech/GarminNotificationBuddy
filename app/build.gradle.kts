@@ -47,7 +47,6 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.runtime)
-    implementation(libs.garmin.connect.iq)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.material)
     kapt(libs.androidx.room.compiler)

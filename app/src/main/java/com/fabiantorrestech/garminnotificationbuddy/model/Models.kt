@@ -4,9 +4,9 @@ import java.time.ZonedDateTime
 import java.util.Locale
 import java.util.UUID
 
-enum class DeliveryMode {
-    CONNECT_IQ,
-    PROXY_MIRROR,
+enum class BurstStrategy {
+    LATEST_ONLY,
+    FIFO,
 }
 
 enum class RuleAction {
@@ -42,13 +42,9 @@ data class DeliveryResult(
     val reason: String,
 )
 
-data class GarminSetupStatus(
-    val garminConnectInstalled: Boolean = false,
-    val sdkReady: Boolean = false,
-    val deviceName: String? = null,
-    val deviceStatus: String? = null,
-    val watchAppInstalled: Boolean = false,
-    val lastError: String? = null,
+data class MirrorPacingSettings(
+    val cooldownSeconds: Int,
+    val burstStrategy: BurstStrategy,
 )
 
 data class ScheduleWindow(
@@ -59,9 +55,14 @@ data class ScheduleWindow(
 
 fun String.toRuleAction(): RuleAction = RuleAction.valueOf(this)
 
-fun String.toDeliveryMode(): DeliveryMode = DeliveryMode.valueOf(this)
-
 fun String.toScheduleScope(): ScheduleScope = ScheduleScope.valueOf(this)
+
+fun String?.toBurstStrategyOrDefault(
+    default: BurstStrategy = BurstStrategy.LATEST_ONLY,
+): BurstStrategy {
+    return runCatching { BurstStrategy.valueOf(this.orEmpty()) }
+        .getOrDefault(default)
+}
 
 fun NotificationEvent.searchableText(): String {
     return buildString {

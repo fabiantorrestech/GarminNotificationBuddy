@@ -12,7 +12,6 @@ recyclerview = "1.4.0"
 lifecycle = "2.9.0"
 room = "2.7.2"
 coroutines = "1.10.2"
-garminConnectIq = "2.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,7 +30,6 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
-garmin-connect-iq = { group = "com.garmin.connectiq", name = "ciq-companion-app-sdk", version.ref = "garminConnectIq" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

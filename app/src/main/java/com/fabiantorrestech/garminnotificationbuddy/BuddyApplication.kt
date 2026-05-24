@@ -4,7 +4,8 @@ import android.app.Application
 import com.fabiantorrestech.garminnotificationbuddy.data.BuddyDatabase
 import com.fabiantorrestech.garminnotificationbuddy.data.DeliveryLogRepository
 import com.fabiantorrestech.garminnotificationbuddy.data.RuleRepository
-import com.fabiantorrestech.garminnotificationbuddy.delivery.ConnectIqDeliveryClient
+import com.fabiantorrestech.garminnotificationbuddy.delivery.GarminConnectStatusChecker
+import com.fabiantorrestech.garminnotificationbuddy.delivery.ProxyMirrorBurstCoordinator
 import com.fabiantorrestech.garminnotificationbuddy.delivery.ProxyMirrorDeliveryClient
 import com.fabiantorrestech.garminnotificationbuddy.domain.DecisionEngine
 import com.fabiantorrestech.garminnotificationbuddy.domain.NotificationNormalizer
@@ -36,8 +37,14 @@ class BuddyContainer(application: Application) {
     )
     val deliveryLogRepository = DeliveryLogRepository(database.buddyDao())
     val phoneDndStateProvider = PhoneDndStateProvider(application)
-    val connectIqDeliveryClient = ConnectIqDeliveryClient(application)
+    val garminConnectStatusChecker = GarminConnectStatusChecker(application)
     val proxyMirrorDeliveryClient = ProxyMirrorDeliveryClient(application)
+    val proxyMirrorBurstCoordinator = ProxyMirrorBurstCoordinator(
+        applicationScope = applicationScope,
+        ruleRepository = ruleRepository,
+        deliveryLogRepository = deliveryLogRepository,
+        proxyMirrorDeliveryClient = proxyMirrorDeliveryClient,
+    )
     val decisionEngine = DecisionEngine(
         ruleRepository = ruleRepository,
         scheduleEvaluator = ScheduleEvaluator(),
@@ -48,8 +55,7 @@ class BuddyContainer(application: Application) {
         deliveryLogRepository = deliveryLogRepository,
         decisionEngine = decisionEngine,
         normalizer = NotificationNormalizer(application.packageManager, application.packageName),
-        connectIqDeliveryClient = connectIqDeliveryClient,
-        proxyMirrorDeliveryClient = proxyMirrorDeliveryClient,
+        proxyMirrorBurstCoordinator = proxyMirrorBurstCoordinator,
     )
 
     init {
@@ -57,6 +63,5 @@ class BuddyContainer(application: Application) {
             ruleRepository.ensureDefaults()
         }
         proxyMirrorDeliveryClient.ensureNotificationChannel()
-        connectIqDeliveryClient.initialize()
     }
 }

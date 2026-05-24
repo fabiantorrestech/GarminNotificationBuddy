@@ -14,7 +14,7 @@ import com.fabiantorrestech.garminnotificationbuddy.model.NotificationEvent
 
 class ProxyMirrorDeliveryClient(
     private val context: Context,
-) : WatchDeliveryClient {
+) {
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -29,7 +29,7 @@ class ProxyMirrorDeliveryClient(
         notificationManager.createNotificationChannel(channel)
     }
 
-    override suspend fun deliver(event: NotificationEvent): DeliveryResult {
+    suspend fun deliver(event: NotificationEvent): DeliveryResult {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {

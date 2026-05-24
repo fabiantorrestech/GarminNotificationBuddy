@@ -8,9 +8,42 @@ class DeliveryLogRepository(
 ) {
     fun observeLogs(): Flow<List<DeliveryLogEntity>> = dao.observeDeliveryLogs()
 
-    suspend fun recordDecision(
+    suspend fun recordBlockedDecision(
         event: NotificationEvent,
-        allowed: Boolean,
+        reason: String,
+    ) {
+        insertLog(event = event, decision = "BLOCKED", reason = reason)
+    }
+
+    suspend fun recordDeliveryResult(
+        event: NotificationEvent,
+        success: Boolean,
+        reason: String,
+    ) {
+        insertLog(
+            event = event,
+            decision = if (success) "DELIVERED" else "FAILED",
+            reason = reason,
+        )
+    }
+
+    suspend fun recordQueued(
+        event: NotificationEvent,
+        reason: String,
+    ) {
+        insertLog(event = event, decision = "QUEUED", reason = reason)
+    }
+
+    suspend fun recordReplaced(
+        event: NotificationEvent,
+        reason: String,
+    ) {
+        insertLog(event = event, decision = "REPLACED", reason = reason)
+    }
+
+    private suspend fun insertLog(
+        event: NotificationEvent,
+        decision: String,
         reason: String,
     ) {
         dao.insertDeliveryLog(
@@ -20,9 +53,9 @@ class DeliveryLogRepository(
                 channelId = event.channelId,
                 title = event.title,
                 body = event.expandedText.ifBlank { event.text },
-                decision = if (allowed) "ALLOWED" else "BLOCKED",
+                decision = decision,
                 reason = reason,
-                timestamp = event.postedAt,
+                timestamp = System.currentTimeMillis(),
             ),
         )
     }

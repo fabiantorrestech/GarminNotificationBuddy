@@ -33,31 +33,41 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="@string/delivery_mode_header"
+            android:text="@string/mirror_pacing_header"
             android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
-        <RadioGroup
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_marginTop="8dp"
+            android:text="@string/mirror_cooldown_label" />
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/connectIqRadioButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/connect_iq_mode_label" />
+        <EditText
+            android:id="@+id/mirrorCooldownEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:hint="@string/mirror_cooldown_hint"
+            android:inputType="number" />
 
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/proxyMirrorRadioButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/proxy_mode_label" />
-        </RadioGroup>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/mirrorBurstStrategyButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/proxy_mode_warning" />
+            android:text="@string/mirror_pacing_warning" />
+
+        <Button
+            android:id="@+id/saveMirrorPacingButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/save_mirror_pacing_button" />
     </LinearLayout>
 </ScrollView>

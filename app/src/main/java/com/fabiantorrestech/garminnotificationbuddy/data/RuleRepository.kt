@@ -1,10 +1,12 @@
 package com.fabiantorrestech.garminnotificationbuddy.data
 
 import android.content.pm.PackageManager
-import com.fabiantorrestech.garminnotificationbuddy.model.DeliveryMode
+import com.fabiantorrestech.garminnotificationbuddy.model.BurstStrategy
+import com.fabiantorrestech.garminnotificationbuddy.model.MirrorPacingSettings
 import com.fabiantorrestech.garminnotificationbuddy.model.NotificationEvent
 import com.fabiantorrestech.garminnotificationbuddy.model.RuleAction
 import com.fabiantorrestech.garminnotificationbuddy.model.ScheduleScope
+import com.fabiantorrestech.garminnotificationbuddy.model.toBurstStrategyOrDefault
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -50,8 +52,25 @@ class RuleRepository(
         dao.upsertGlobalSettings(getGlobalSettings().copy(syncWithPhoneDnd = syncEnabled))
     }
 
-    suspend fun setDeliveryMode(mode: DeliveryMode) {
-        dao.upsertGlobalSettings(getGlobalSettings().copy(deliveryMode = mode.name))
+    suspend fun saveMirrorPacingSettings(cooldownSeconds: Int, burstStrategy: BurstStrategy) {
+        dao.upsertGlobalSettings(
+            getGlobalSettings().copy(
+                mirrorCooldownSeconds = cooldownSeconds.coerceAtLeast(0),
+                mirrorBurstStrategy = burstStrategy.name,
+            ),
+        )
+    }
+
+    suspend fun resolveMirrorPacing(packageName: String): MirrorPacingSettings {
+        val globalSettings = getGlobalSettings()
+        val appRule = dao.getAppRule(packageName)
+        val globalStrategy = globalSettings.mirrorBurstStrategy.toBurstStrategyOrDefault()
+        return MirrorPacingSettings(
+            cooldownSeconds = appRule?.mirrorCooldownSecondsOverride
+                ?: globalSettings.mirrorCooldownSeconds,
+            burstStrategy = appRule?.mirrorBurstStrategyOverride
+                .toBurstStrategyOrDefault(globalStrategy),
+        )
     }
 
     suspend fun getAppRule(packageName: String): AppRuleEntity? = dao.getAppRule(packageName)
@@ -106,6 +125,29 @@ class RuleRepository(
     suspend fun setAppDefaultAction(packageName: String, action: RuleAction) {
         val existing = dao.getAppRule(packageName) ?: return
         dao.upsertAppRule(existing.copy(defaultAction = action.name))
+    }
+
+    suspend fun saveAppMirrorPacingOverride(
+        packageName: String,
+        isOverrideEnabled: Boolean,
+        cooldownSeconds: Int?,
+        burstStrategy: BurstStrategy?,
+    ) {
+        val existing = dao.getAppRule(packageName) ?: return
+        dao.upsertAppRule(
+            existing.copy(
+                mirrorCooldownSecondsOverride = if (isOverrideEnabled) {
+                    cooldownSeconds?.coerceAtLeast(0)
+                } else {
+                    null
+                },
+                mirrorBurstStrategyOverride = if (isOverrideEnabled) {
+                    burstStrategy?.name
+                } else {
+                    null
+                },
+            ),
+        )
     }
 
     suspend fun setChannelEnabled(packageName: String, channelId: String, isEnabled: Boolean) {
