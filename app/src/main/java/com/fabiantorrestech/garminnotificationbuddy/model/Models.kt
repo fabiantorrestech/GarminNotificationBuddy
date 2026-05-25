@@ -14,11 +14,6 @@ enum class RuleAction {
     BLOCK,
 }
 
-enum class ScheduleScope {
-    GLOBAL,
-    APP,
-}
-
 data class NotificationEvent(
     val id: String = UUID.randomUUID().toString(),
     val packageName: String,
@@ -43,9 +38,30 @@ data class DeliveryResult(
 )
 
 data class MirrorPacingSettings(
-    val cooldownSeconds: Int,
+    val cooldownMillis: Int,
     val burstStrategy: BurstStrategy,
 )
+
+data class HomeSummary(
+    val notificationListenerGranted: Boolean,
+    val postNotificationsGranted: Boolean,
+    val garminConnectInstalled: Boolean,
+    val lastBuddyRepostTimestamp: Long?,
+    val deliveredInLast24Hours: Int,
+    val enabledScheduleCount: Int,
+    val activeScheduleCount: Int,
+    val activeGlobalScheduleCount: Int,
+    val activeAppScheduleCount: Int,
+    val followPhoneDndRules: Boolean,
+    val dndPolicyAccessGranted: Boolean,
+    val phoneDndActive: Boolean,
+) {
+    val buddyReady: Boolean
+        get() = notificationListenerGranted && postNotificationsGranted && garminConnectInstalled
+
+    val buddyDndBlockActive: Boolean
+        get() = !followPhoneDndRules && dndPolicyAccessGranted && phoneDndActive
+}
 
 data class ScheduleWindow(
     val daysMask: Int,
@@ -54,8 +70,6 @@ data class ScheduleWindow(
 )
 
 fun String.toRuleAction(): RuleAction = RuleAction.valueOf(this)
-
-fun String.toScheduleScope(): ScheduleScope = ScheduleScope.valueOf(this)
 
 fun String?.toBurstStrategyOrDefault(
     default: BurstStrategy = BurstStrategy.LATEST_ONLY,

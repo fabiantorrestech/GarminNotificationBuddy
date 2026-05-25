@@ -13,6 +13,13 @@ class ScheduleEvaluator {
         return schedules.any { it.isEnabled && isActive(it, now) }
     }
 
+    fun activeSchedules(
+        schedules: List<ScheduleEntity>,
+        now: ZonedDateTime,
+    ): List<ScheduleEntity> {
+        return schedules.filter { it.isEnabled && isActive(it, now) }
+    }
+
     fun isActive(schedule: ScheduleEntity, now: ZonedDateTime): Boolean {
         val currentMinute = now.minuteOfDay()
         val start = schedule.startMinuteOfDay

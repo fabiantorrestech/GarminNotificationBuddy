@@ -12,10 +12,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fabiantorrestech.garminnotificationbuddy.BuddyApplication
+import com.fabiantorrestech.garminnotificationbuddy.MainActivity
 import com.fabiantorrestech.garminnotificationbuddy.R
 import com.fabiantorrestech.garminnotificationbuddy.data.AppRuleEntity
 import com.fabiantorrestech.garminnotificationbuddy.model.BurstStrategy
-import com.fabiantorrestech.garminnotificationbuddy.model.ScheduleScope
 import com.fabiantorrestech.garminnotificationbuddy.model.toBurstStrategyOrDefault
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -32,8 +32,7 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
 
         val appNameView = view.findViewById<TextView>(R.id.detailAppNameTextView)
         val packageView = view.findViewById<TextView>(R.id.detailPackageNameTextView)
-        val appEnabledSwitch = view.findViewById<SwitchMaterial>(R.id.detailAppEnabledSwitch)
-        val defaultActionButton = view.findViewById<MaterialButton>(R.id.detailDefaultActionButton)
+        val appEnabledButton = view.findViewById<MaterialButton>(R.id.detailAppEnabledButton)
         val mirrorOverrideSwitch =
             view.findViewById<SwitchMaterial>(R.id.detailMirrorPacingOverrideSwitch)
         val mirrorCooldownInput = view.findViewById<EditText>(R.id.detailMirrorCooldownEditText)
@@ -49,7 +48,7 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
 
         var selectedBurstStrategy = BurstStrategy.LATEST_ONLY
         var currentAppRule: AppRuleEntity? = null
-        var currentGlobalCooldown = 5
+        var currentGlobalCooldownMillis = 5_000
         var currentGlobalBurstStrategy = BurstStrategy.LATEST_ONLY
 
         val channelAdapter = ChannelRuleAdapter(
@@ -74,22 +73,8 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
         }
 
         val scheduleAdapter = ScheduleAdapter(
-            onEditClicked = { schedule ->
-                ScheduleEditorDialog.show(
-                    fragment = this,
-                    existing = schedule,
-                    scope = ScheduleScope.APP,
-                    scopeKey = packageName,
-                ) { updatedSchedule ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        container.ruleRepository.saveSchedule(updatedSchedule)
-                    }
-                }
-            },
-            onDeleteClicked = { schedule ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    container.ruleRepository.deleteSchedule(schedule.id)
-                }
+            onOpenClicked = { schedule ->
+                (requireActivity() as MainActivity).openScheduleDetail(schedule.id)
             },
         )
         view.findViewById<RecyclerView>(R.id.appScheduleRecyclerView).apply {
@@ -98,16 +83,7 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
         }
 
         view.findViewById<Button>(R.id.addAppScheduleButton).setOnClickListener {
-            ScheduleEditorDialog.show(
-                fragment = this,
-                existing = null,
-                scope = ScheduleScope.APP,
-                scopeKey = packageName,
-            ) { newSchedule ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    container.ruleRepository.saveSchedule(newSchedule)
-                }
-            }
+            (requireActivity() as MainActivity).openScheduleDetail(preselectedPackageName = packageName)
         }
 
         mirrorOverrideSwitch.setOnCheckedChangeListener { _, _ ->
@@ -115,7 +91,6 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
                 mirrorOverrideSwitch = mirrorOverrideSwitch,
                 mirrorCooldownInput = mirrorCooldownInput,
                 mirrorBurstStrategyButton = mirrorBurstStrategyButton,
-                saveMirrorPacingButton = saveMirrorPacingButton,
             )
         }
         mirrorBurstStrategyButton.setOnClickListener {
@@ -127,11 +102,11 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
                 container.ruleRepository.saveAppMirrorPacingOverride(
                     packageName = packageName,
                     isOverrideEnabled = mirrorOverrideSwitch.isChecked,
-                    cooldownSeconds = mirrorCooldownInput.text.toString()
+                    cooldownMillis = mirrorCooldownInput.text.toString()
                         .toIntOrNull()
                         ?.coerceAtLeast(0)
-                        ?: currentAppRule?.mirrorCooldownSecondsOverride
-                        ?: currentGlobalCooldown,
+                        ?: currentAppRule?.mirrorCooldownMillisOverride
+                        ?: currentGlobalCooldownMillis,
                     burstStrategy = if (mirrorOverrideSwitch.isChecked) selectedBurstStrategy else null,
                 )
             }
@@ -154,16 +129,14 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
                     container.ruleRepository.observeAppRule(packageName).collect { appRule ->
                         currentAppRule = appRule
                         bindAppRule(
-                    appRule = appRule,
-                    appNameView = appNameView,
-                    appEnabledSwitch = appEnabledSwitch,
-                    defaultActionButton = defaultActionButton,
-                    mirrorOverrideSwitch = mirrorOverrideSwitch,
-                    mirrorCooldownInput = mirrorCooldownInput,
-                    mirrorBurstStrategyButton = mirrorBurstStrategyButton,
-                    saveMirrorPacingButton = saveMirrorPacingButton,
-                    currentGlobalCooldown = currentGlobalCooldown,
-                )
+                            appRule = appRule,
+                            appNameView = appNameView,
+                            appEnabledButton = appEnabledButton,
+                            mirrorOverrideSwitch = mirrorOverrideSwitch,
+                            mirrorCooldownInput = mirrorCooldownInput,
+                            mirrorBurstStrategyButton = mirrorBurstStrategyButton,
+                            currentGlobalCooldownMillis = currentGlobalCooldownMillis,
+                        )
                         selectedBurstStrategy = appRule?.mirrorBurstStrategyOverride
                             .toBurstStrategyOrDefault(currentGlobalBurstStrategy)
                         bindBurstStrategyLabel(mirrorBurstStrategyButton, selectedBurstStrategy)
@@ -171,8 +144,17 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
                 }
                 launch {
                     container.ruleRepository.observeGlobalSettings().collect { settings ->
-                        currentGlobalCooldown = settings.mirrorCooldownSeconds
+                        currentGlobalCooldownMillis = settings.mirrorCooldownMillis
                         currentGlobalBurstStrategy = settings.mirrorBurstStrategy.toBurstStrategyOrDefault()
+                        if (currentAppRule?.mirrorCooldownMillisOverride == null &&
+                            !mirrorCooldownInput.hasFocus()
+                        ) {
+                            mirrorCooldownInput.setText(currentGlobalCooldownMillis.toString())
+                        }
+                        if (currentAppRule?.mirrorBurstStrategyOverride == null) {
+                            selectedBurstStrategy = currentGlobalBurstStrategy
+                            bindBurstStrategyLabel(mirrorBurstStrategyButton, selectedBurstStrategy)
+                        }
                     }
                 }
                 launch {
@@ -192,7 +174,7 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
                     }
                 }
                 launch {
-                    container.ruleRepository.observeSchedules(ScheduleScope.APP, packageName).collect { schedules ->
+                    container.ruleRepository.observeSchedulesForApp(packageName).collect { schedules ->
                         scheduleAdapter.submitList(schedules)
                         emptySchedulesView.visibility = if (schedules.isEmpty()) View.VISIBLE else View.GONE
                     }
@@ -204,34 +186,23 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
     private fun bindAppRule(
         appRule: AppRuleEntity?,
         appNameView: TextView,
-        appEnabledSwitch: SwitchMaterial,
-        defaultActionButton: MaterialButton,
+        appEnabledButton: MaterialButton,
         mirrorOverrideSwitch: SwitchMaterial,
         mirrorCooldownInput: EditText,
         mirrorBurstStrategyButton: MaterialButton,
-        saveMirrorPacingButton: Button,
-        currentGlobalCooldown: Int,
+        currentGlobalCooldownMillis: Int,
     ) {
-        val name = appRule?.appName ?: packageName
-        appNameView.text = name
+        appNameView.text = appRule?.appName ?: packageName
 
-        appEnabledSwitch.setOnCheckedChangeListener(null)
-        appEnabledSwitch.isChecked = appRule?.isEnabled == true
-        appEnabledSwitch.setOnCheckedChangeListener { _, isChecked ->
+        bindEnabledStateButton(appEnabledButton, appRule?.isEnabled == true)
+        appEnabledButton.setOnClickListener {
+            val nextEnabled = !(appRule?.isEnabled == true)
             viewLifecycleOwner.lifecycleScope.launch {
-                container.ruleRepository.setAppEnabled(packageName, isChecked)
+                container.ruleRepository.setAppEnabled(packageName, nextEnabled)
             }
         }
 
-        val currentAction = appRule?.defaultAction ?: "BLOCK"
-        defaultActionButton.text = getString(R.string.default_action_template, currentAction)
-        defaultActionButton.setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch {
-                container.ruleRepository.setAppDefaultAction(packageName, nextAction(currentAction))
-            }
-        }
-
-        val isOverrideEnabled = appRule?.mirrorCooldownSecondsOverride != null ||
+        val isOverrideEnabled = appRule?.mirrorCooldownMillisOverride != null ||
             appRule?.mirrorBurstStrategyOverride != null
         mirrorOverrideSwitch.setOnCheckedChangeListener(null)
         mirrorOverrideSwitch.isChecked = isOverrideEnabled
@@ -240,13 +211,12 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
                 mirrorOverrideSwitch = mirrorOverrideSwitch,
                 mirrorCooldownInput = mirrorCooldownInput,
                 mirrorBurstStrategyButton = mirrorBurstStrategyButton,
-                saveMirrorPacingButton = saveMirrorPacingButton,
             )
         }
 
         if (!mirrorCooldownInput.hasFocus()) {
             mirrorCooldownInput.setText(
-                (appRule?.mirrorCooldownSecondsOverride ?: currentGlobalCooldown).toString(),
+                (appRule?.mirrorCooldownMillisOverride ?: currentGlobalCooldownMillis).toString(),
             )
         }
 
@@ -254,7 +224,6 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
             mirrorOverrideSwitch = mirrorOverrideSwitch,
             mirrorCooldownInput = mirrorCooldownInput,
             mirrorBurstStrategyButton = mirrorBurstStrategyButton,
-            saveMirrorPacingButton = saveMirrorPacingButton,
         )
     }
 
@@ -262,12 +231,10 @@ class AppDetailFragment : Fragment(R.layout.fragment_app_detail) {
         mirrorOverrideSwitch: SwitchMaterial,
         mirrorCooldownInput: EditText,
         mirrorBurstStrategyButton: MaterialButton,
-        saveMirrorPacingButton: Button,
     ) {
         val isEnabled = mirrorOverrideSwitch.isChecked
         mirrorCooldownInput.isEnabled = isEnabled
         mirrorBurstStrategyButton.isEnabled = isEnabled
-        saveMirrorPacingButton.isEnabled = true
     }
 
     private fun bindBurstStrategyLabel(

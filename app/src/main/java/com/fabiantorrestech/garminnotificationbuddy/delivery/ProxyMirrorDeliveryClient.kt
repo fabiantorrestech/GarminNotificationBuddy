@@ -41,7 +41,7 @@ class ProxyMirrorDeliveryClient(
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification_small)
             .setContentTitle("${event.appName}: ${event.title.ifBlank { context.getString(R.string.proxy_notification_title_fallback) }}")
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

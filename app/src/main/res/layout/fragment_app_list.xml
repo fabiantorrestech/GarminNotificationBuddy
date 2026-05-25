@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -11,12 +12,37 @@
         android:text="@string/app_list_intro"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/appFilterToggleGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:singleSelection="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/userAppsFilterButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checkable="true"
+            android:text="@string/app_filter_user_apps" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/allInstalledFilterButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checkable="true"
+            android:text="@string/app_filter_all_installed" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
     <TextView
         android:id="@+id/emptyAppsTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="@string/no_apps_observed"
+        android:text="@string/app_list_empty_generic"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
         android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView

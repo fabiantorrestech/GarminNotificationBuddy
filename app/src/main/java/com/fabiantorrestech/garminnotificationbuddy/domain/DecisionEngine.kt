@@ -3,7 +3,6 @@ package com.fabiantorrestech.garminnotificationbuddy.domain
 import com.fabiantorrestech.garminnotificationbuddy.model.DeliveryDecision
 import com.fabiantorrestech.garminnotificationbuddy.model.NotificationEvent
 import com.fabiantorrestech.garminnotificationbuddy.model.RuleAction
-import com.fabiantorrestech.garminnotificationbuddy.model.ScheduleScope
 import com.fabiantorrestech.garminnotificationbuddy.model.searchableText
 import com.fabiantorrestech.garminnotificationbuddy.model.toRuleAction
 import com.fabiantorrestech.garminnotificationbuddy.data.RuleRepository
@@ -24,11 +23,14 @@ class DecisionEngine(
             return DeliveryDecision(false, "master_disabled")
         }
 
-        if (globalSettings.syncWithPhoneDnd && phoneDndStateProvider.isDndActive()) {
+        if (!globalSettings.followPhoneDndRules &&
+            phoneDndStateProvider.hasPolicyAccess() &&
+            phoneDndStateProvider.isDndActive()
+        ) {
             return DeliveryDecision(false, "phone_dnd_active")
         }
 
-        val globalSchedules = ruleRepository.getSchedules(ScheduleScope.GLOBAL, null)
+        val globalSchedules = ruleRepository.getGlobalSchedules()
         if (scheduleEvaluator.anyActiveBlockingSchedule(globalSchedules, now)) {
             return DeliveryDecision(false, "global_schedule_block")
         }
@@ -39,7 +41,7 @@ class DecisionEngine(
             return DeliveryDecision(false, "app_disabled")
         }
 
-        val appSchedules = ruleRepository.getSchedules(ScheduleScope.APP, event.packageName)
+        val appSchedules = ruleRepository.getSchedulesForApp(event.packageName)
         if (scheduleEvaluator.anyActiveBlockingSchedule(appSchedules, now)) {
             return DeliveryDecision(false, "app_schedule_block")
         }

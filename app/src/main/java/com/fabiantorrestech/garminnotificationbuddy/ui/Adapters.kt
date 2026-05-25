@@ -1,15 +1,20 @@
 package com.fabiantorrestech.garminnotificationbuddy.ui
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.fabiantorrestech.garminnotificationbuddy.R
-import com.fabiantorrestech.garminnotificationbuddy.data.AppRuleEntity
+import com.fabiantorrestech.garminnotificationbuddy.data.AppListItem
 import com.fabiantorrestech.garminnotificationbuddy.data.ChannelRuleEntity
 import com.fabiantorrestech.garminnotificationbuddy.data.DeliveryLogEntity
 import com.fabiantorrestech.garminnotificationbuddy.data.ScheduleEntity
+import com.fabiantorrestech.garminnotificationbuddy.data.ScheduleListItem
 import com.fabiantorrestech.garminnotificationbuddy.model.RuleAction
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -17,13 +22,14 @@ import java.text.DateFormat
 import java.util.Date
 
 class AppRuleAdapter(
-    private val onEnabledChanged: (AppRuleEntity, Boolean) -> Unit,
-    private val onDefaultActionClicked: (AppRuleEntity) -> Unit,
-    private val onDetailsClicked: (AppRuleEntity) -> Unit,
+    private val bindPrimaryButton: (MaterialButton, AppListItem) -> Unit,
+    private val onPrimaryClicked: (AppListItem) -> Unit,
+    private val secondaryButtonText: String?,
+    private val onSecondaryClicked: ((AppListItem) -> Unit)?,
 ) : RecyclerView.Adapter<AppRuleAdapter.AppRuleViewHolder>() {
-    private val items = mutableListOf<AppRuleEntity>()
+    private val items = mutableListOf<AppListItem>()
 
-    fun submitList(newItems: List<AppRuleEntity>) {
+    fun submitList(newItems: List<AppListItem>) {
         items.clear()
         items.addAll(newItems)
         notifyDataSetChanged()
@@ -41,31 +47,49 @@ class AppRuleAdapter(
     override fun getItemCount(): Int = items.size
 
     inner class AppRuleViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val iconView: ImageView = itemView.findViewById(R.id.appIconImageView)
         private val nameView: TextView = itemView.findViewById(R.id.appNameTextView)
         private val packageView: TextView = itemView.findViewById(R.id.packageNameTextView)
         private val lastSeenView: TextView = itemView.findViewById(R.id.lastSeenTextView)
-        private val enabledSwitch: SwitchMaterial = itemView.findViewById(R.id.appEnabledSwitch)
-        private val defaultActionButton: MaterialButton = itemView.findViewById(R.id.defaultActionButton)
+        private val enabledButton: MaterialButton = itemView.findViewById(R.id.appEnabledButton)
         private val detailsButton: MaterialButton = itemView.findViewById(R.id.detailsButton)
 
-        fun bind(item: AppRuleEntity) {
+        fun bind(item: AppListItem) {
+            val fallbackIcon = AppCompatResources.getDrawable(itemView.context, R.drawable.ic_app_fallback)
+            val appIcon = if (item.isInstalled) {
+                runCatching { itemView.context.packageManager.getApplicationIcon(item.packageName) }.getOrNull()
+            } else {
+                null
+            }
+
+            iconView.setImageDrawable(appIcon ?: fallbackIcon)
+            iconView.imageTintList = if (appIcon == null) {
+                ColorStateList.valueOf(
+                    ContextCompat.getColor(itemView.context, R.color.app_icon_fallback_tint),
+                )
+            } else {
+                null
+            }
             nameView.text = item.appName
             packageView.text = item.packageName
-            lastSeenView.text = itemView.context.getString(
-                R.string.last_seen_template,
-                DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(item.lastSeenAt)),
-            )
-            enabledSwitch.setOnCheckedChangeListener(null)
-            enabledSwitch.isChecked = item.isEnabled
-            enabledSwitch.setOnCheckedChangeListener { _, isChecked ->
-                onEnabledChanged(item, isChecked)
+            lastSeenView.text = if (item.lastSeenAt > 0L) {
+                itemView.context.getString(
+                    R.string.last_seen_template,
+                    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(item.lastSeenAt)),
+                )
+            } else {
+                itemView.context.getString(R.string.last_seen_never)
             }
-            defaultActionButton.text = itemView.context.getString(
-                R.string.default_action_template,
-                item.defaultAction,
-            )
-            defaultActionButton.setOnClickListener { onDefaultActionClicked(item) }
-            detailsButton.setOnClickListener { onDetailsClicked(item) }
+            bindPrimaryButton(enabledButton, item)
+            enabledButton.setOnClickListener { onPrimaryClicked(item) }
+
+            if (secondaryButtonText == null || onSecondaryClicked == null) {
+                detailsButton.visibility = View.GONE
+            } else {
+                detailsButton.visibility = View.VISIBLE
+                detailsButton.text = secondaryButtonText
+                detailsButton.setOnClickListener { onSecondaryClicked.invoke(item) }
+            }
         }
     }
 }
@@ -115,12 +139,11 @@ class ChannelRuleAdapter(
 }
 
 class ScheduleAdapter(
-    private val onEditClicked: (ScheduleEntity) -> Unit,
-    private val onDeleteClicked: (ScheduleEntity) -> Unit,
+    private val onOpenClicked: (ScheduleEntity) -> Unit,
 ) : RecyclerView.Adapter<ScheduleAdapter.ScheduleViewHolder>() {
-    private val items = mutableListOf<ScheduleEntity>()
+    private val items = mutableListOf<ScheduleListItem>()
 
-    fun submitList(newItems: List<ScheduleEntity>) {
+    fun submitList(newItems: List<ScheduleListItem>) {
         items.clear()
         items.addAll(newItems)
         notifyDataSetChanged()
@@ -141,13 +164,23 @@ class ScheduleAdapter(
         private val nameView: TextView = itemView.findViewById(R.id.scheduleNameTextView)
         private val summaryView: TextView = itemView.findViewById(R.id.scheduleSummaryTextView)
         private val editButton: MaterialButton = itemView.findViewById(R.id.editScheduleButton)
-        private val deleteButton: MaterialButton = itemView.findViewById(R.id.deleteScheduleButton)
 
-        fun bind(item: ScheduleEntity) {
-            nameView.text = item.name
-            summaryView.text = formatScheduleSummary(item)
-            editButton.setOnClickListener { onEditClicked(item) }
-            deleteButton.setOnClickListener { onDeleteClicked(item) }
+        fun bind(item: ScheduleListItem) {
+            nameView.text = item.schedule.name
+            summaryView.text = if (item.assignedAppCount == 0) {
+                itemView.context.getString(
+                    R.string.schedule_summary_global_template,
+                    formatScheduleSummary(item.schedule),
+                )
+            } else {
+                itemView.context.getString(
+                    R.string.schedule_summary_assigned_template,
+                    formatScheduleSummary(item.schedule),
+                    item.assignedAppCount,
+                )
+            }
+            itemView.setOnClickListener { onOpenClicked(item.schedule) }
+            editButton.setOnClickListener { onOpenClicked(item.schedule) }
         }
     }
 }
@@ -207,8 +240,44 @@ private fun minuteLabel(minutes: Int): String {
     return "%02d:%02d".format(hours, mins)
 }
 
-fun nextAction(actionName: String): RuleAction {
-    return if (actionName == RuleAction.ALLOW.name) RuleAction.BLOCK else RuleAction.ALLOW
+fun bindEnabledStateButton(button: MaterialButton, isEnabled: Boolean) {
+    val context = button.context
+    val strokeColor = if (isEnabled) {
+        R.color.rule_action_allow
+    } else {
+        R.color.rule_action_block
+    }
+    val containerColor = if (isEnabled) {
+        R.color.rule_action_allow_container
+    } else {
+        R.color.rule_action_block_container
+    }
+
+    button.text = context.getString(if (isEnabled) R.string.app_enabled_state else R.string.app_disabled_state)
+    button.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, containerColor))
+    button.strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, strokeColor))
+    button.setTextColor(ContextCompat.getColor(context, strokeColor))
+}
+
+fun bindAssignmentStateButton(button: MaterialButton, isAssigned: Boolean) {
+    val context = button.context
+    val strokeColor = if (isAssigned) {
+        R.color.rule_action_allow
+    } else {
+        R.color.rule_action_block
+    }
+    val containerColor = if (isAssigned) {
+        R.color.rule_action_allow_container
+    } else {
+        R.color.rule_action_block_container
+    }
+
+    button.text = context.getString(
+        if (isAssigned) R.string.schedule_assignment_applies else R.string.schedule_assignment_not_applied,
+    )
+    button.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, containerColor))
+    button.strokeColor = ColorStateList.valueOf(ContextCompat.getColor(context, strokeColor))
+    button.setTextColor(ContextCompat.getColor(context, strokeColor))
 }
 
 fun nextChannelOverride(currentValue: String?): RuleAction? {

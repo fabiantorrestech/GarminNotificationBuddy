@@ -3,6 +3,7 @@ package com.fabiantorrestech.garminnotificationbuddy
 import android.app.Application
 import com.fabiantorrestech.garminnotificationbuddy.data.BuddyDatabase
 import com.fabiantorrestech.garminnotificationbuddy.data.DeliveryLogRepository
+import com.fabiantorrestech.garminnotificationbuddy.data.HomeStatusRepository
 import com.fabiantorrestech.garminnotificationbuddy.data.RuleRepository
 import com.fabiantorrestech.garminnotificationbuddy.delivery.GarminConnectStatusChecker
 import com.fabiantorrestech.garminnotificationbuddy.delivery.ProxyMirrorBurstCoordinator
@@ -12,6 +13,7 @@ import com.fabiantorrestech.garminnotificationbuddy.domain.NotificationNormalize
 import com.fabiantorrestech.garminnotificationbuddy.domain.PhoneDndStateProvider
 import com.fabiantorrestech.garminnotificationbuddy.domain.ScheduleEvaluator
 import com.fabiantorrestech.garminnotificationbuddy.processing.NotificationProcessor
+import com.google.android.material.color.DynamicColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +25,7 @@ class BuddyApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        DynamicColors.applyToActivitiesIfAvailable(this)
         container = BuddyContainer(this)
     }
 }
@@ -38,6 +41,15 @@ class BuddyContainer(application: Application) {
     val deliveryLogRepository = DeliveryLogRepository(database.buddyDao())
     val phoneDndStateProvider = PhoneDndStateProvider(application)
     val garminConnectStatusChecker = GarminConnectStatusChecker(application)
+    private val scheduleEvaluator = ScheduleEvaluator()
+    val homeStatusRepository = HomeStatusRepository(
+        context = application,
+        ruleRepository = ruleRepository,
+        deliveryLogRepository = deliveryLogRepository,
+        garminConnectStatusChecker = garminConnectStatusChecker,
+        phoneDndStateProvider = phoneDndStateProvider,
+        scheduleEvaluator = scheduleEvaluator,
+    )
     val proxyMirrorDeliveryClient = ProxyMirrorDeliveryClient(application)
     val proxyMirrorBurstCoordinator = ProxyMirrorBurstCoordinator(
         applicationScope = applicationScope,
@@ -47,7 +59,7 @@ class BuddyContainer(application: Application) {
     )
     val decisionEngine = DecisionEngine(
         ruleRepository = ruleRepository,
-        scheduleEvaluator = ScheduleEvaluator(),
+        scheduleEvaluator = scheduleEvaluator,
         phoneDndStateProvider = phoneDndStateProvider,
     )
     val notificationProcessor = NotificationProcessor(

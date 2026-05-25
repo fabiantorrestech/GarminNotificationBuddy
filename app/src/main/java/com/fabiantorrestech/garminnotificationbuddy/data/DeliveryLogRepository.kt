@@ -8,6 +8,12 @@ class DeliveryLogRepository(
 ) {
     fun observeLogs(): Flow<List<DeliveryLogEntity>> = dao.observeDeliveryLogs()
 
+    fun observeLatestDeliveredTimestamp(): Flow<Long?> = dao.observeLatestDeliveredTimestamp()
+
+    suspend fun countDeliveredSince(cutoffTimestamp: Long): Int {
+        return dao.countDeliveredSince(cutoffTimestamp)
+    }
+
     suspend fun recordBlockedDecision(
         event: NotificationEvent,
         reason: String,

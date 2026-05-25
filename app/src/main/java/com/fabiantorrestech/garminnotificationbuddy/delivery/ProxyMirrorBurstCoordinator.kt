@@ -84,7 +84,7 @@ class ProxyMirrorBurstCoordinator(
             if (state != null) {
                 state.isDelivering = false
                 state.cooldownUntilElapsedRealtime = if (result.success) {
-                    SystemClock.elapsedRealtime() + (pendingEvent.pacing.cooldownSeconds * 1000L)
+                    SystemClock.elapsedRealtime() + pendingEvent.pacing.cooldownMillis
                 } else {
                     0L
                 }

@@ -3,4 +3,9 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="nav_item_tint">#FF214A64</color>
+    <color name="rule_action_allow">#FF1E8E3E</color>
+    <color name="rule_action_allow_container">#FFE9F7ED</color>
+    <color name="rule_action_block">#FFC5221F</color>
+    <color name="rule_action_block_container">#FFFDECEC</color>
+    <color name="app_icon_fallback_tint">#FF3D5A6C</color>
 </resources>

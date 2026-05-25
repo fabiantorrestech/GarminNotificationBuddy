@@ -9,14 +9,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.fabiantorrestech.garminnotificationbuddy.R
 import com.fabiantorrestech.garminnotificationbuddy.data.ScheduleEntity
-import com.fabiantorrestech.garminnotificationbuddy.model.ScheduleScope
 
 object ScheduleEditorDialog {
     fun show(
         fragment: Fragment,
         existing: ScheduleEntity?,
-        scope: ScheduleScope,
-        scopeKey: String?,
         onSave: (ScheduleEntity) -> Unit,
     ) {
         val context = fragment.requireContext()
@@ -67,8 +64,6 @@ object ScheduleEditorDialog {
 
                 val schedule = ScheduleEntity(
                     id = existing?.id ?: 0L,
-                    scopeType = scope.name,
-                    scopeKey = scopeKey,
                     name = nameInput.text.toString().ifBlank {
                         context.getString(R.string.default_schedule_name)
                     },

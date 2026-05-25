@@ -15,6 +15,27 @@
             android:text="@string/settings_intro"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/settings_onboarding_header"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_onboarding_detail" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/openOnboardingButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_open_onboarding_button" />
+
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/masterEnableSwitch"
             android:layout_width="match_parent"

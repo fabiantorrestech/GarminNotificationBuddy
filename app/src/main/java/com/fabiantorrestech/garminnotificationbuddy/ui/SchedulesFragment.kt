@@ -11,8 +11,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fabiantorrestech.garminnotificationbuddy.BuddyApplication
+import com.fabiantorrestech.garminnotificationbuddy.MainActivity
 import com.fabiantorrestech.garminnotificationbuddy.R
-import com.fabiantorrestech.garminnotificationbuddy.model.ScheduleScope
 import kotlinx.coroutines.launch
 
 class SchedulesFragment : Fragment(R.layout.fragment_schedules) {
@@ -23,22 +23,8 @@ class SchedulesFragment : Fragment(R.layout.fragment_schedules) {
 
         val emptyView = view.findViewById<TextView>(R.id.emptyGlobalSchedulesTextView)
         val adapter = ScheduleAdapter(
-            onEditClicked = { schedule ->
-                ScheduleEditorDialog.show(
-                    fragment = this,
-                    existing = schedule,
-                    scope = ScheduleScope.GLOBAL,
-                    scopeKey = null,
-                ) { updatedSchedule ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        container.ruleRepository.saveSchedule(updatedSchedule)
-                    }
-                }
-            },
-            onDeleteClicked = { schedule ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    container.ruleRepository.deleteSchedule(schedule.id)
-                }
+            onOpenClicked = { schedule ->
+                (requireActivity() as MainActivity).openScheduleDetail(schedule.id)
             },
         )
 
@@ -48,21 +34,12 @@ class SchedulesFragment : Fragment(R.layout.fragment_schedules) {
         }
 
         view.findViewById<Button>(R.id.addGlobalScheduleButton).setOnClickListener {
-            ScheduleEditorDialog.show(
-                fragment = this,
-                existing = null,
-                scope = ScheduleScope.GLOBAL,
-                scopeKey = null,
-            ) { schedule ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    container.ruleRepository.saveSchedule(schedule)
-                }
-            }
+            (requireActivity() as MainActivity).openScheduleDetail()
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                container.ruleRepository.observeSchedules(ScheduleScope.GLOBAL, null).collect { schedules ->
+                container.ruleRepository.observeScheduleListItems().collect { schedules ->
                     adapter.submitList(schedules)
                     emptyView.visibility = if (schedules.isEmpty()) View.VISIBLE else View.GONE
                 }

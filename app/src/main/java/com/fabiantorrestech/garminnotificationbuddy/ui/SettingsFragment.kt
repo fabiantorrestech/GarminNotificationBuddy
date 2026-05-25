@@ -9,6 +9,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.fabiantorrestech.garminnotificationbuddy.BuddyApplication
+import com.fabiantorrestech.garminnotificationbuddy.MainActivity
 import com.fabiantorrestech.garminnotificationbuddy.R
 import com.fabiantorrestech.garminnotificationbuddy.data.GlobalSettingsEntity
 import com.fabiantorrestech.garminnotificationbuddy.model.BurstStrategy
@@ -24,23 +25,27 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         super.onViewCreated(view, savedInstanceState)
 
         val masterEnabledSwitch = view.findViewById<SwitchMaterial>(R.id.masterEnableSwitch)
-        val syncWithDndSwitch = view.findViewById<SwitchMaterial>(R.id.syncDndSwitch)
+        val followPhoneDndRulesSwitch = view.findViewById<SwitchMaterial>(R.id.syncDndSwitch)
         val mirrorCooldownInput = view.findViewById<EditText>(R.id.mirrorCooldownEditText)
         val mirrorBurstStrategyButton =
             view.findViewById<MaterialButton>(R.id.mirrorBurstStrategyButton)
         val saveMirrorPacingButton = view.findViewById<Button>(R.id.saveMirrorPacingButton)
+        val openOnboardingButton = view.findViewById<MaterialButton>(R.id.openOnboardingButton)
 
         var selectedBurstStrategy = BurstStrategy.LATEST_ONLY
         var currentSettings = GlobalSettingsEntity()
 
+        openOnboardingButton.setOnClickListener {
+            (requireActivity() as MainActivity).openOnboarding()
+        }
         masterEnabledSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewLifecycleOwner.lifecycleScope.launch {
                 container.ruleRepository.setMasterEnabled(isChecked)
             }
         }
-        syncWithDndSwitch.setOnCheckedChangeListener { _, isChecked ->
+        followPhoneDndRulesSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewLifecycleOwner.lifecycleScope.launch {
-                container.ruleRepository.setSyncWithPhoneDnd(isChecked)
+                container.ruleRepository.setFollowPhoneDndRules(isChecked)
             }
         }
         mirrorBurstStrategyButton.setOnClickListener {
@@ -50,10 +55,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         saveMirrorPacingButton.setOnClickListener {
             viewLifecycleOwner.lifecycleScope.launch {
                 container.ruleRepository.saveMirrorPacingSettings(
-                    cooldownSeconds = mirrorCooldownInput.text.toString()
+                    cooldownMillis = mirrorCooldownInput.text.toString()
                         .toIntOrNull()
                         ?.coerceAtLeast(0)
-                        ?: currentSettings.mirrorCooldownSeconds,
+                        ?: currentSettings.mirrorCooldownMillis,
                     burstStrategy = selectedBurstStrategy,
                 )
             }
@@ -65,12 +70,12 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                     currentSettings = settings
 
                     masterEnabledSwitch.setOnCheckedChangeListener(null)
-                    syncWithDndSwitch.setOnCheckedChangeListener(null)
+                    followPhoneDndRulesSwitch.setOnCheckedChangeListener(null)
                     masterEnabledSwitch.isChecked = settings.masterEnabled
-                    syncWithDndSwitch.isChecked = settings.syncWithPhoneDnd
+                    followPhoneDndRulesSwitch.isChecked = settings.followPhoneDndRules
 
                     if (!mirrorCooldownInput.hasFocus()) {
-                        mirrorCooldownInput.setText(settings.mirrorCooldownSeconds.toString())
+                        mirrorCooldownInput.setText(settings.mirrorCooldownMillis.toString())
                     }
 
                     selectedBurstStrategy = settings.mirrorBurstStrategy.toBurstStrategyOrDefault()
@@ -81,9 +86,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                             container.ruleRepository.setMasterEnabled(isChecked)
                         }
                     }
-                    syncWithDndSwitch.setOnCheckedChangeListener { _, isChecked ->
+                    followPhoneDndRulesSwitch.setOnCheckedChangeListener { _, isChecked ->
                         viewLifecycleOwner.lifecycleScope.launch {
-                            container.ruleRepository.setSyncWithPhoneDnd(isChecked)
+                            container.ruleRepository.setFollowPhoneDndRules(isChecked)
                         }
                     }
                 }
