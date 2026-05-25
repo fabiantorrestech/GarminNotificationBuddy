@@ -1,6 +1,7 @@
 package com.fabiantorrestech.garminnotificationbuddy.delivery
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -18,13 +19,19 @@ class ProxyMirrorDeliveryClient(
     private val notificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    fun ensureNotificationChannel() {
+    fun ensureSilentMirrorChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.proxy_notification_channel_name),
-            NotificationManager.IMPORTANCE_HIGH,
+            NotificationManager.IMPORTANCE_LOW,
         ).apply {
             description = context.getString(R.string.proxy_notification_channel_description)
+            setSound(null, null)
+            enableVibration(false)
+            vibrationPattern = longArrayOf(0L)
+            enableLights(false)
+            setShowBadge(false)
+            lockscreenVisibility = Notification.VISIBILITY_SECRET
         }
         notificationManager.createNotificationChannel(channel)
     }
@@ -45,16 +52,23 @@ class ProxyMirrorDeliveryClient(
             .setContentTitle("${event.appName}: ${event.title.ifBlank { context.getString(R.string.proxy_notification_title_fallback) }}")
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+            .setOnlyAlertOnce(true)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .setAutoCancel(true)
             .setTimeoutAfter(45_000L)
             .build()
 
-        notificationManager.notify(event.id.hashCode(), notification)
-        return DeliveryResult(true, "delivered_proxy_mirror")
+        return runCatching {
+            notificationManager.notify(event.id.hashCode(), notification)
+            DeliveryResult(true, "delivered_silent_placeholder")
+        }.getOrElse { error ->
+            DeliveryResult(false, "notify_failed_${error.javaClass.simpleName.lowercase()}")
+        }
     }
 
     companion object {
-        const val CHANNEL_ID = "buddy_forwarded_notifications"
+        const val CHANNEL_ID = "buddy_silent_mirror_notifications"
     }
 }

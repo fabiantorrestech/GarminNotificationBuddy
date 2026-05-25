@@ -4,6 +4,7 @@ import android.app.Notification
 import android.content.pm.PackageManager
 import android.service.notification.StatusBarNotification
 import com.fabiantorrestech.garminnotificationbuddy.model.NotificationEvent
+import com.fabiantorrestech.garminnotificationbuddy.model.SourceNotification
 
 class NotificationNormalizer(
     private val packageManager: PackageManager,
@@ -33,6 +34,12 @@ class NotificationNormalizer(
             expandedText = bigText,
             category = notification.category.orEmpty(),
             postedAt = statusBarNotification.postTime,
+            sourceNotification = SourceNotification(
+                key = statusBarNotification.key,
+                packageName = packageName,
+                tag = statusBarNotification.tag,
+                notificationId = statusBarNotification.id,
+            ),
         )
     }
 

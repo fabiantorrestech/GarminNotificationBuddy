@@ -160,6 +160,10 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    fun updateScheduleDetailTitle(title: String) {
+        supportActionBar?.title = title
+    }
+
     private fun showRootFragment(fragment: Fragment, menuItemId: Int, title: String): Boolean {
         currentRootItemId = menuItemId
         supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
@@ -177,7 +181,7 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(isNestedScreen)
         supportActionBar?.title = when (currentFragment) {
             is AppDetailFragment -> getString(R.string.app_detail_title)
-            is ScheduleDetailFragment -> getString(R.string.schedule_detail_title)
+            is ScheduleDetailFragment -> currentFragment.currentToolbarTitle(this)
             is OnboardingFragment -> getString(R.string.onboarding_title)
             else -> titleForRootItem(currentRootItemId)
         }

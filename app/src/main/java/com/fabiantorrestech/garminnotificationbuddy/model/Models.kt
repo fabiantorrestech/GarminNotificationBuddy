@@ -25,7 +25,22 @@ data class NotificationEvent(
     val expandedText: String,
     val category: String,
     val postedAt: Long,
+    val sourceNotification: SourceNotification,
+    val sourceCancellationStatus: SourceCancellationStatus = SourceCancellationStatus.NOT_ATTEMPTED,
 )
+
+data class SourceNotification(
+    val key: String,
+    val packageName: String,
+    val tag: String?,
+    val notificationId: Int,
+)
+
+enum class SourceCancellationStatus {
+    NOT_ATTEMPTED,
+    SUCCEEDED,
+    FAILED,
+}
 
 data class DeliveryDecision(
     val shouldDeliver: Boolean,
@@ -35,6 +50,28 @@ data class DeliveryDecision(
 data class DeliveryResult(
     val success: Boolean,
     val reason: String,
+)
+
+enum class MirrorDispatchState {
+    DELIVERED,
+    QUEUED,
+}
+
+data class MirrorDispatchResult(
+    val state: MirrorDispatchState,
+    val reason: String,
+    val deliveryResult: DeliveryResult? = null,
+)
+
+data class SourceCancellationResult(
+    val success: Boolean,
+    val reason: String,
+)
+
+data class NotificationProcessResult(
+    val decision: DeliveryDecision,
+    val sourceCancellationResult: SourceCancellationResult? = null,
+    val mirrorDispatchResult: MirrorDispatchResult? = null,
 )
 
 data class MirrorPacingSettings(

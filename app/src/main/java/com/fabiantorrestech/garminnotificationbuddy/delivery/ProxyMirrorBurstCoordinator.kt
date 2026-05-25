@@ -4,8 +4,11 @@ import android.os.SystemClock
 import com.fabiantorrestech.garminnotificationbuddy.data.DeliveryLogRepository
 import com.fabiantorrestech.garminnotificationbuddy.data.RuleRepository
 import com.fabiantorrestech.garminnotificationbuddy.model.BurstStrategy
+import com.fabiantorrestech.garminnotificationbuddy.model.MirrorDispatchResult
+import com.fabiantorrestech.garminnotificationbuddy.model.MirrorDispatchState
 import com.fabiantorrestech.garminnotificationbuddy.model.MirrorPacingSettings
 import com.fabiantorrestech.garminnotificationbuddy.model.NotificationEvent
+import com.fabiantorrestech.garminnotificationbuddy.model.SourceCancellationStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,11 +25,12 @@ class ProxyMirrorBurstCoordinator(
     private val coordinatorMutex = Mutex()
     private val sourceStates = mutableMapOf<String, SourceState>()
 
-    suspend fun submit(event: NotificationEvent) {
+    suspend fun submit(event: NotificationEvent): MirrorDispatchResult {
         val pacing = ruleRepository.resolveMirrorPacing(event.packageName)
         val queuedEvents = mutableListOf<NotificationEvent>()
         var deliverImmediately = false
         val sourceKey = sourceKey(event)
+        var queueReason: String? = null
 
         coordinatorMutex.withLock {
             val state = sourceStates.getOrPut(sourceKey) { SourceState() }
@@ -48,35 +52,41 @@ class ProxyMirrorBurstCoordinator(
                         state.pendingEvents.addLast(PendingEvent(event, pacing))
                     }
                 }
+                queueReason = "queued_burst_cooldown_${pacing.burstStrategy.name.lowercase()}${sourceCancellationSuffix(event)}"
             }
         }
 
         if (deliverImmediately) {
-            deliverEvent(sourceKey = sourceKey, pendingEvent = PendingEvent(event, pacing))
-            return
+            return deliverEvent(sourceKey = sourceKey, pendingEvent = PendingEvent(event, pacing))
         }
 
         queuedEvents.forEach { replacedEvent ->
             deliveryLogRepository.recordReplaced(
                 event = replacedEvent,
-                reason = "replaced_pending_latest_only",
+                reason = "replaced_pending_latest_only${sourceCancellationSuffix(replacedEvent)}",
             )
         }
+        val resolvedQueueReason = checkNotNull(queueReason)
         deliveryLogRepository.recordQueued(
             event = event,
-            reason = "queued_burst_cooldown_${pacing.burstStrategy.name.lowercase()}",
+            reason = resolvedQueueReason,
+        )
+        return MirrorDispatchResult(
+            state = MirrorDispatchState.QUEUED,
+            reason = resolvedQueueReason,
         )
     }
 
     private suspend fun deliverEvent(
         sourceKey: String,
         pendingEvent: PendingEvent,
-    ) {
+    ): MirrorDispatchResult {
         val result = proxyMirrorDeliveryClient.deliver(pendingEvent.event)
+        val logReason = deliveryLogReason(pendingEvent.event, result.success, result.reason)
         deliveryLogRepository.recordDeliveryResult(
             event = pendingEvent.event,
             success = result.success,
-            reason = result.reason,
+            reason = logReason,
         )
 
         coordinatorMutex.withLock {
@@ -92,6 +102,12 @@ class ProxyMirrorBurstCoordinator(
                 cleanupLocked(sourceKey, state)
             }
         }
+
+        return MirrorDispatchResult(
+            state = MirrorDispatchState.DELIVERED,
+            reason = logReason,
+            deliveryResult = result,
+        )
     }
 
     private fun scheduleNextLocked(sourceKey: String, state: SourceState) {
@@ -157,6 +173,36 @@ class ProxyMirrorBurstCoordinator(
     private fun sourceKey(event: NotificationEvent): String {
         val channelKey = event.channelId.ifBlank { NO_CHANNEL_KEY }
         return "${event.packageName}::$channelKey"
+    }
+
+    private fun deliveryLogReason(
+        event: NotificationEvent,
+        success: Boolean,
+        baseReason: String,
+    ): String {
+        return when {
+            success && event.sourceCancellationStatus == SourceCancellationStatus.SUCCEEDED ->
+                "delivered_silent_placeholder_source_canceled"
+
+            success && event.sourceCancellationStatus == SourceCancellationStatus.FAILED ->
+                "delivered_silent_placeholder_source_cancel_failed"
+
+            !success && event.sourceCancellationStatus == SourceCancellationStatus.SUCCEEDED ->
+                "silent_placeholder_failed_after_source_canceled_$baseReason"
+
+            !success && event.sourceCancellationStatus == SourceCancellationStatus.FAILED ->
+                "silent_placeholder_failed_source_cancel_failed_$baseReason"
+
+            else -> baseReason
+        }
+    }
+
+    private fun sourceCancellationSuffix(event: NotificationEvent): String {
+        return when (event.sourceCancellationStatus) {
+            SourceCancellationStatus.SUCCEEDED -> "_source_canceled"
+            SourceCancellationStatus.FAILED -> "_source_cancel_failed"
+            SourceCancellationStatus.NOT_ATTEMPTED -> ""
+        }
     }
 
     private data class PendingEvent(

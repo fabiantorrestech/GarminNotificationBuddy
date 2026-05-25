@@ -74,6 +74,6 @@ class BuddyContainer(application: Application) {
         applicationScope.launch {
             ruleRepository.ensureDefaults()
         }
-        proxyMirrorDeliveryClient.ensureNotificationChannel()
+        proxyMirrorDeliveryClient.ensureSilentMirrorChannel()
     }
 }

@@ -1,6 +1,7 @@
 package com.fabiantorrestech.garminnotificationbuddy.ui
 
 import android.app.TimePickerDialog
+import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -45,9 +46,7 @@ class ScheduleDetailFragment : Fragment(R.layout.fragment_schedule_detail) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val scheduleNameView = view.findViewById<TextView>(R.id.scheduleNameTextView)
         val editNameButton = view.findViewById<MaterialButton>(R.id.editScheduleNameButton)
-        val scheduleDetailSubtitle = view.findViewById<TextView>(R.id.scheduleDetailSubtitleTextView)
         val enabledSwitch = view.findViewById<SwitchMaterial>(R.id.scheduleEnabledSwitch)
         val startButton = view.findViewById<Button>(R.id.startTimeButton)
         val endButton = view.findViewById<Button>(R.id.endTimeButton)
@@ -67,15 +66,12 @@ class ScheduleDetailFragment : Fragment(R.layout.fragment_schedule_detail) {
             view.findViewById<CheckBox>(R.id.saturdayCheckBox),
         )
 
-        scheduleDetailSubtitle.text = getString(
-            if (scheduleId == null) R.string.add_schedule_title else R.string.schedule_detail_title,
-        )
         if (scheduleId == null) {
             preselectedPackageName?.let(selectedPackages::add)
             hasBoundAssignments = true
             scheduleName = getString(R.string.default_schedule_name)
         }
-        scheduleNameView.text = scheduleName.ifBlank { getString(R.string.default_schedule_name) }
+        updateToolbarTitle()
         dayChecks.forEach { it.isChecked = true }
         updateTimeButton(startButton, startMinute)
         updateTimeButton(endButton, endMinute)
@@ -107,7 +103,7 @@ class ScheduleDetailFragment : Fragment(R.layout.fragment_schedule_detail) {
                 currentName = scheduleName.ifBlank { getString(R.string.default_schedule_name) },
             ) { updatedName ->
                 scheduleName = updatedName
-                scheduleNameView.text = updatedName
+                updateToolbarTitle()
             }
         }
         deleteButton.visibility = if (scheduleId == null) View.GONE else View.VISIBLE
@@ -174,7 +170,6 @@ class ScheduleDetailFragment : Fragment(R.layout.fragment_schedule_detail) {
                         if (schedule != null && !hasBoundSchedule) {
                             bindSchedule(
                                 schedule = schedule,
-                                scheduleNameView = scheduleNameView,
                                 enabledSwitch = enabledSwitch,
                                 dayChecks = dayChecks,
                                 startButton = startButton,
@@ -219,14 +214,13 @@ class ScheduleDetailFragment : Fragment(R.layout.fragment_schedule_detail) {
 
     private fun bindSchedule(
         schedule: ScheduleEntity,
-        scheduleNameView: TextView,
         enabledSwitch: SwitchMaterial,
         dayChecks: List<CheckBox>,
         startButton: Button,
         endButton: Button,
     ) {
         scheduleName = schedule.name
-        scheduleNameView.text = scheduleName
+        updateToolbarTitle()
         enabledSwitch.isChecked = schedule.isEnabled
         startMinute = schedule.startMinuteOfDay
         endMinute = schedule.endMinuteOfDay
@@ -261,6 +255,14 @@ class ScheduleDetailFragment : Fragment(R.layout.fragment_schedule_detail) {
 
     private fun updateAssignedCount(view: TextView) {
         view.text = getString(R.string.schedule_assigned_count_template, selectedPackages.size)
+    }
+
+    fun currentToolbarTitle(context: Context): String {
+        return scheduleName.ifBlank { context.getString(R.string.default_schedule_name) }
+    }
+
+    private fun updateToolbarTitle() {
+        (activity as? MainActivity)?.updateScheduleDetailTitle(currentToolbarTitle(requireContext()))
     }
 
     private fun showEditNameDialog(
