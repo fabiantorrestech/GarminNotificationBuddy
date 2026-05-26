@@ -7,7 +7,6 @@ import com.fabiantorrestech.garminnotificationbuddy.delivery.ProxyMirrorBurstCoo
 import com.fabiantorrestech.garminnotificationbuddy.domain.DecisionEngine
 import com.fabiantorrestech.garminnotificationbuddy.domain.NotificationNormalizer
 import com.fabiantorrestech.garminnotificationbuddy.model.NotificationProcessResult
-import com.fabiantorrestech.garminnotificationbuddy.model.SourceCancellationStatus
 
 class NotificationProcessor(
     private val ruleRepository: RuleRepository,
@@ -18,7 +17,6 @@ class NotificationProcessor(
 ) {
     suspend fun process(
         statusBarNotification: StatusBarNotification,
-        sourceNotificationController: SourceNotificationController,
     ): NotificationProcessResult? {
         val event = normalizer.normalize(statusBarNotification) ?: return null
 
@@ -30,18 +28,9 @@ class NotificationProcessor(
             return NotificationProcessResult(decision = decision)
         }
 
-        val sourceCancellationResult = sourceNotificationController.cancel(event.sourceNotification)
-        val deliveryEvent = event.copy(
-            sourceCancellationStatus = if (sourceCancellationResult.success) {
-                SourceCancellationStatus.SUCCEEDED
-            } else {
-                SourceCancellationStatus.FAILED
-            },
-        )
-        val mirrorDispatchResult = proxyMirrorBurstCoordinator.submit(deliveryEvent)
+        val mirrorDispatchResult = proxyMirrorBurstCoordinator.submit(event)
         return NotificationProcessResult(
             decision = decision,
-            sourceCancellationResult = sourceCancellationResult,
             mirrorDispatchResult = mirrorDispatchResult,
         )
     }

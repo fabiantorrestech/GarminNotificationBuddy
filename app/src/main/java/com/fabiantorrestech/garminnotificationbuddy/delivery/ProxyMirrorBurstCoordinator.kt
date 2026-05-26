@@ -8,7 +8,6 @@ import com.fabiantorrestech.garminnotificationbuddy.model.MirrorDispatchResult
 import com.fabiantorrestech.garminnotificationbuddy.model.MirrorDispatchState
 import com.fabiantorrestech.garminnotificationbuddy.model.MirrorPacingSettings
 import com.fabiantorrestech.garminnotificationbuddy.model.NotificationEvent
-import com.fabiantorrestech.garminnotificationbuddy.model.SourceCancellationStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -52,7 +51,7 @@ class ProxyMirrorBurstCoordinator(
                         state.pendingEvents.addLast(PendingEvent(event, pacing))
                     }
                 }
-                queueReason = "queued_burst_cooldown_${pacing.burstStrategy.name.lowercase()}${sourceCancellationSuffix(event)}"
+                queueReason = "queued_burst_cooldown_${pacing.burstStrategy.name.lowercase()}"
             }
         }
 
@@ -63,7 +62,7 @@ class ProxyMirrorBurstCoordinator(
         queuedEvents.forEach { replacedEvent ->
             deliveryLogRepository.recordReplaced(
                 event = replacedEvent,
-                reason = "replaced_pending_latest_only${sourceCancellationSuffix(replacedEvent)}",
+                reason = "replaced_pending_latest_only",
             )
         }
         val resolvedQueueReason = checkNotNull(queueReason)
@@ -82,11 +81,10 @@ class ProxyMirrorBurstCoordinator(
         pendingEvent: PendingEvent,
     ): MirrorDispatchResult {
         val result = proxyMirrorDeliveryClient.deliver(pendingEvent.event)
-        val logReason = deliveryLogReason(pendingEvent.event, result.success, result.reason)
         deliveryLogRepository.recordDeliveryResult(
             event = pendingEvent.event,
             success = result.success,
-            reason = logReason,
+            reason = result.reason,
         )
 
         coordinatorMutex.withLock {
@@ -105,7 +103,7 @@ class ProxyMirrorBurstCoordinator(
 
         return MirrorDispatchResult(
             state = MirrorDispatchState.DELIVERED,
-            reason = logReason,
+            reason = result.reason,
             deliveryResult = result,
         )
     }
@@ -173,36 +171,6 @@ class ProxyMirrorBurstCoordinator(
     private fun sourceKey(event: NotificationEvent): String {
         val channelKey = event.channelId.ifBlank { NO_CHANNEL_KEY }
         return "${event.packageName}::$channelKey"
-    }
-
-    private fun deliveryLogReason(
-        event: NotificationEvent,
-        success: Boolean,
-        baseReason: String,
-    ): String {
-        return when {
-            success && event.sourceCancellationStatus == SourceCancellationStatus.SUCCEEDED ->
-                "delivered_silent_placeholder_source_canceled"
-
-            success && event.sourceCancellationStatus == SourceCancellationStatus.FAILED ->
-                "delivered_silent_placeholder_source_cancel_failed"
-
-            !success && event.sourceCancellationStatus == SourceCancellationStatus.SUCCEEDED ->
-                "silent_placeholder_failed_after_source_canceled_$baseReason"
-
-            !success && event.sourceCancellationStatus == SourceCancellationStatus.FAILED ->
-                "silent_placeholder_failed_source_cancel_failed_$baseReason"
-
-            else -> baseReason
-        }
-    }
-
-    private fun sourceCancellationSuffix(event: NotificationEvent): String {
-        return when (event.sourceCancellationStatus) {
-            SourceCancellationStatus.SUCCEEDED -> "_source_canceled"
-            SourceCancellationStatus.FAILED -> "_source_cancel_failed"
-            SourceCancellationStatus.NOT_ATTEMPTED -> ""
-        }
     }
 
     private data class PendingEvent(

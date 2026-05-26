@@ -23,7 +23,7 @@ class ProxyMirrorDeliveryClient(
         val channel = NotificationChannel(
             CHANNEL_ID,
             context.getString(R.string.proxy_notification_channel_name),
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_MIN,
         ).apply {
             description = context.getString(R.string.proxy_notification_channel_description)
             setSound(null, null)
